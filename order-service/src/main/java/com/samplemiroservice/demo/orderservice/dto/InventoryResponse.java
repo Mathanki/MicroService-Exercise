@@ -1,4 +1,4 @@
-package com.samplemiroservice.demo.inventoryservice.dto;
+package com.samplemiroservice.demo.orderservice.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

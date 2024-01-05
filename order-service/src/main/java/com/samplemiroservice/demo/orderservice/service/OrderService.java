@@ -1,12 +1,15 @@
 package com.samplemiroservice.demo.orderservice.service;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.reactive.function.client.WebClient;
 
+import com.samplemiroservice.demo.orderservice.dto.InventoryResponse;
 import com.samplemiroservice.demo.orderservice.dto.OrderLineItemsDto;
 import com.samplemiroservice.demo.orderservice.dto.OrderRequest;
 import com.samplemiroservice.demo.orderservice.model.Order;
@@ -20,13 +23,34 @@ public class OrderService {
 	@Autowired
 	private OrderRepository orderRepository;
 
+	@Autowired
+	private WebClient webClient;
+
 	public void placeOrder(OrderRequest orderRequest) {
 		Order order = new Order();
 		order.setOrderNumber(UUID.randomUUID().toString());
 		List<OrderLineItems> orderLineItemsList = orderRequest.getOrderLineItemsDtoList().stream()
 				.map(orderLineItemsDto -> mapToDto(orderLineItemsDto)).toList();
 		order.setOrderLineItemsList(orderLineItemsList);
-		orderRepository.save(order);
+
+		List<String> suCodeList = order.getOrderLineItemsList()
+				.stream()
+				.map(orderLineItem -> orderLineItem.getSkuCode())
+				.toList();
+		// call inventory service if product is there only place order.
+		InventoryResponse[] inventoryResponseArr = webClient.get().uri("http://localhost:8082/api/inventory", 
+				uriBuilder ->uriBuilder.queryParam("skuCode", suCodeList).build())
+				.retrieve()
+				.bodyToMono(InventoryResponse[].class)
+				.block();
+		
+		Boolean isAllproductInStock =  Arrays.stream(inventoryResponseArr).allMatch(inventoryRes -> inventoryRes.isInStock());
+
+		if (isAllproductInStock) {
+			orderRepository.save(order);
+		} else {
+			throw new IllegalArgumentException("Product is not in stock, please try again later");
+		}
 
 	}
 
