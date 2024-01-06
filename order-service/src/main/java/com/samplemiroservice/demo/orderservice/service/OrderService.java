@@ -24,7 +24,7 @@ public class OrderService {
 	private OrderRepository orderRepository;
 
 	@Autowired
-	private WebClient.Builder webClientBuilder;
+	private WebClient webClient;
 
 	public void placeOrder(OrderRequest orderRequest) {
 		Order order = new Order();
@@ -38,7 +38,7 @@ public class OrderService {
 				.map(orderLineItem -> orderLineItem.getSkuCode())
 				.toList();
 		// call inventory service if product is there only place order.
-		InventoryResponse[] inventoryResponseArr = webClientBuilder.build().get().uri("http://inventory-service/api/inventory", 
+		InventoryResponse[] inventoryResponseArr = webClient.get().uri("http://localhost:8082/api/inventory", 
 				uriBuilder ->uriBuilder.queryParam("skuCode", suCodeList).build())
 				.retrieve()
 				.bodyToMono(InventoryResponse[].class)
